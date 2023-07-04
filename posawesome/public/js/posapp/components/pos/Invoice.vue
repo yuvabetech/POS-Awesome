@@ -3,6 +3,7 @@
     <v-dialog v-model="cancel_dialog" max-width="330">
       <v-card>
         <v-card-title class="text-h5">
+import Fsaccount from './Fsaccount.vue';
           <span class="headline primary--text">{{
             __('Cancel Current Invoice ?')
           }}</span>
@@ -23,6 +24,9 @@
       class="cards my-0 py-0 mt-3 grey lighten-5"
     >
       <v-row align="center" class="items px-2 py-1">
+        <v-col>
+          <Fsaccount></Fsaccount>
+        </v-col>
         <v-col
           v-if="pos_profile.posa_allow_sales_order"
           cols="9"
@@ -819,6 +823,7 @@
 import { evntBus } from '../../bus';
 import format from '../../format';
 import Customer from './Customer.vue';
+import Fsaccount from './Fsaccount.vue';
 
 export default {
   mixins: [format],
@@ -872,7 +877,8 @@ export default {
 
   components: {
     Customer,
-  },
+    Fsaccount
+},
 
   computed: {
     total_qty() {
