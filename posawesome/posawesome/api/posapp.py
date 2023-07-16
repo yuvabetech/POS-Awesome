@@ -410,9 +410,10 @@ def get_customer_names(pos_profile):
         pos_profile = json.loads(pos_profile)
         condition = ""
         condition += get_customer_group_condition(pos_profile)
+        # add custom fs_account_number for fs integration CEBA
         customers = frappe.db.sql(
             """
-            SELECT name, mobile_no, email_id, tax_id, customer_name, primary_address
+            SELECT name, mobile_no, email_id, tax_id, customer_name, primary_address, fs_account_number
             FROM `tabCustomer`
             WHERE {0}
             ORDER by name
@@ -1590,6 +1591,10 @@ def get_customer_info(customer):
     res["customer_group_price_list"] = frappe.get_value(
         "Customer Group", customer.customer_group, "default_price_list"
     )
+
+    # add custom fs_account_number for fs integration CEBA
+    res["fs_account_number"] = customer.fs_account_number
+
 
     if customer.loyalty_program:
         lp_details = get_loyalty_program_details_with_points(

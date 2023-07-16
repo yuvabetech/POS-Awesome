@@ -25,7 +25,7 @@ import Fsaccount from './Fsaccount.vue';
     >
       <v-row align="center" class="items px-2 py-1">
         <v-col>
-          <Fsaccount></Fsaccount>
+          <FSAccount></FSAccount>
         </v-col>
         <v-col
           v-if="pos_profile.posa_allow_sales_order"
@@ -823,7 +823,7 @@ import Fsaccount from './Fsaccount.vue';
 import { evntBus } from '../../bus';
 import format from '../../format';
 import Customer from './Customer.vue';
-import Fsaccount from './Fsaccount.vue';
+import FSAccount from './FSAccount.vue';
 
 export default {
   mixins: [format],
@@ -877,7 +877,7 @@ export default {
 
   components: {
     Customer,
-    Fsaccount
+    FSAccount
 },
 
   computed: {

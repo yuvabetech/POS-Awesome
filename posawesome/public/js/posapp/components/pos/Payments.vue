@@ -1,5 +1,6 @@
 <template>
   <div>
+    <div>TEST {{ fs_offline }}</div>
     <v-card
       class="selection mx-auto grey lighten-5 pa-1"
       style="max-height: 76vh; height: 76vh"
@@ -113,8 +114,11 @@
                 color="primary"
                 dark
                 @click="set_full_amount(payment.idx)"
-                >{{ payment.mode_of_payment }}</v-btn
+                >{{ payment.mode_of_payment }} {{ fs_offline }}</v-btn
               >
+              <p v-if="payment.mode_of_payment.toUpperCase() == 'FS ACCOUNT'" class="red--text ms-5" style="position: absolute;">
+                <v-icon small>mdi-plus</v-icon> Offline
+              </p>
             </v-col>
             <v-col v-if="is_mpesa_c2b_payment(payment)" :cols="12" class="pl-3">
               <v-btn
@@ -728,6 +732,7 @@ export default {
     pos_settings: '',
     customer_info: '',
     mpesa_modes: [],
+    fs_offline: null
   }),
 
   methods: {
@@ -735,7 +740,7 @@ export default {
       evntBus.$emit('show_payment', 'false');
       evntBus.$emit('set_customer_readonly', false);
     },
-    submit(event, payment_received = false, print = false) {
+    async submit(event, payment_received = false, print = false) {
       if (!this.invoice_doc.is_return && this.total_payments < 0) {
         evntBus.$emit('show_mesage', {
           text: `Payments not correct`,
@@ -846,14 +851,122 @@ export default {
         return;
       }
 
-      this.submit_invoice(print);
-      this.customer_credit_dict = [];
-      this.redeem_customer_credit = false;
-      this.is_cashback = true;
-      this.sales_person = '';
+      // custom payment CEBA
 
-      evntBus.$emit('new_invoice', 'false');
-      this.back_to_invoice();
+      const payment_handlers = {
+        "RAZOR PAY": this.handleRazorpayPayment,
+        "FS ACCOUNT": this.handleFsPayment,
+        "DEFAULT": this.handleRazorpayPayment
+      }
+      const payment_promises = []
+
+      this.invoice_doc.payments.forEach((payment) => {
+        if(!(payment.amount > 0)) return
+        const mode_of_payment = payment.mode_of_payment.toUpperCase()
+        const handler = mode_of_payment in payment_handlers ? payment_handlers[mode_of_payment] : payment_handlers["DEFAULT"]
+        payment_promises.push(handler(payment.mode_of_payment, this.invoice_doc.name, payment.amount))
+      })
+
+      // const failed_payment_amount = []
+
+      try {
+        const payment_responses = await Promise.all(payment_promises)
+        console.log("payment responses", payment_responses)
+
+        this.submit_invoice(print);
+        this.customer_credit_dict = [];
+        this.redeem_customer_credit = false;
+        this.is_cashback = true;
+        this.sales_person = '';
+
+        evntBus.$emit('new_invoice', 'false');
+        this.back_to_invoice();
+      } catch (error) {
+        console.error(error)
+        // failed_payment_amount.push(Number(error.pendingAmount))
+        evntBus.$emit('show_mesage', {
+          text: `Payment failed. Try another mode.`,
+          color: 'error',
+        });
+      }
+
+      // const retry_payment = async (payment_handler, mode_of_payment, invoice_id, amount) => {
+      //   try {
+      //     const resp = await payment_handler(mode_of_payment, invoice_id, amount)
+      //     console.log(resp)
+
+      //     this.submit_invoice(print);
+      //     this.customer_credit_dict = [];
+      //     this.redeem_customer_credit = false;
+      //     this.is_cashback = true;
+      //     this.sales_person = '';
+
+      //     evntBus.$emit('new_invoice', 'false');
+      //     this.back_to_invoice();
+      //   } catch (error) {
+      //     console.error(error)
+      //   }
+      // }
+
+      // if(failed_payment_amount.length > 0) {
+      //   console.log("retrying payment")
+      //   const pending_amount = failed_payment_amount.reduce((accumulator, currentValue) => {
+      //     return accumulator + currentValue;
+      //   }, 0);
+
+      //   setTimeout(() => {
+      //     console.error("Retrying payment of", pending_amount, "using Razor Pay")
+      //     retry_payment(payment_handlers["DEFAULT"], "Razor Pay", this.invoice_doc.name, pending_amount)
+      //   }, 3000);
+      // }
+    },
+    handleRazorpayPayment(mode_of_payment, invoice_id, amount) {
+      return new Promise((resolve, reject) => {
+        frappe.call({
+          method: 'razorpay_yb.helpers.global_api.get_razorpay_settings',
+          callback: function (r) {
+            if(!r.message) reject(new Error("Payment failed or cancelled."));
+            const options = r.message
+            options.amount = amount * 100
+            options.description = invoice_id
+            
+            options.handler = function (response) {
+              if (response.razorpay_payment_id) {
+                resolve({[mode_of_payment] :amount});
+              } else {
+                reject(new Error("Payment failed or cancelled."));
+              }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+          },
+          error: function (xhr, textStatus, error) {
+            reject(error);
+          }
+        });
+      });
+    },
+    async handleFsPayment(mode_of_payment, invoice_id, amount) {
+      const vm = this
+      return new Promise((resolve, reject) => {
+        console.log("account number to receive from", vm.customer_info.fs_account_number)
+        if(!vm.customer_info.fs_account_number) reject({
+          message: "FS Payment failed due to invalid account number.",
+          pendingAmount: amount,
+        });
+        frappe.call({
+          method: 'frappe_fs.frappe_fs.doctype.fs_settings.fs_settings.receive_amount',
+          args: { amount: amount, description: invoice_id, account_number_from: vm.customer_info.fs_account_number },
+          callback: function (r) {
+            if(!r.message.success) reject({
+              message: "FS Payment failed or cancelled.",
+              pendingAmount: amount,
+            });
+            resolve({[mode_of_payment] :amount});
+          },
+        });
+      });
     },
     submit_invoice(print) {
       this.invoice_doc.payments.forEach((payment) => {
@@ -1305,8 +1418,27 @@ export default {
       return res;
     },
   },
+  // import razorpay CEBA
+  created: function () {
+    const script = document.createElement('script');
+    script.setAttribute("src", "https://checkout.razorpay.com/v1/checkout.js")
+    document.head.appendChild(script)
+  },
 
   mounted: function () {
+    frappe.call({
+      method: `frappe_fs.frappe_fs.doctype.fs_settings.fs_settings.get_account_information`,
+      callback: function (r) {
+        if (r.message.success) {
+          console.log("connection online")
+          this.fs_offline = false
+        } else {
+          console.log("connection offline")
+          this.fs_offline = true
+        }
+      }
+    });
+
     this.$nextTick(function () {
       evntBus.$on('send_invoice_doc_payment', (invoice_doc) => {
         this.invoice_doc = invoice_doc;

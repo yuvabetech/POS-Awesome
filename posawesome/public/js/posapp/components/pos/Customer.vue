@@ -91,7 +91,6 @@ export default {
         callback: function (r) {
           if (r.message) {
             vm.customers = r.message;
-            console.info('loadCustomers');
             if (vm.pos_profile.posa_local_storage) {
               localStorage.setItem('customer_storage', '');
               localStorage.setItem(

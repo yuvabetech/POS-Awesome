@@ -1,7 +1,5 @@
 <template>
-  
-    <div>
-      
+    <div> 
       <v-autocomplete
         dense
         clearable
@@ -30,9 +28,7 @@
               <v-list-item-title
                 class="primary--text subtitle-1"
                 v-html="data.item.fs_number"
-              ></v-list-item-title>
-                                    
-              
+              ></v-list-item-title>                          
             </v-list-item-content>
           </template>
         </template>
@@ -86,8 +82,6 @@
             }
           },
         })
-  
-  
       },
       processPending() {
         // Code to process pending tasks
@@ -181,9 +175,7 @@
     created: function () {
       this.$nextTick(function () {
         evntBus.$on('reset_fs_number',(data)=>{
-  
           this.fs_number ='';
-  
         } );
         evntBus.$on('set_fs_number',(data)=>{
           this.fs_number = data
