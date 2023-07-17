@@ -1,6 +1,5 @@
 <template>
   <div>
-    <div>TEST {{ fs_offline }}</div>
     <v-card
       class="selection mx-auto grey lighten-5 pa-1"
       style="max-height: 76vh; height: 76vh"
@@ -114,11 +113,8 @@
                 color="primary"
                 dark
                 @click="set_full_amount(payment.idx)"
-                >{{ payment.mode_of_payment }} {{ fs_offline }}</v-btn
+                >{{ payment.mode_of_payment }}</v-btn
               >
-              <p v-if="payment.mode_of_payment.toUpperCase() == 'FS ACCOUNT'" class="red--text ms-5" style="position: absolute;">
-                <v-icon small>mdi-plus</v-icon> Offline
-              </p>
             </v-col>
             <v-col v-if="is_mpesa_c2b_payment(payment)" :cols="12" class="pl-3">
               <v-btn
