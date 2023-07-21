@@ -1422,18 +1422,18 @@ export default {
   },
 
   mounted: function () {
-    frappe.call({
-      method: `frappe_fs.frappe_fs.doctype.fs_settings.fs_settings.get_account_information`,
-      callback: function (r) {
-        if (r.message.success) {
-          console.log("connection online")
-          this.fs_offline = false
-        } else {
-          console.log("connection offline")
-          this.fs_offline = true
-        }
-      }
-    });
+    // frappe.call({
+    //   method: `frappe_fs.frappe_fs.doctype.fs_settings.fs_settings.get_account_information`,
+    //   callback: function (r) {
+    //     if (r.message.success) {
+    //       console.log("connection online")
+    //       this.fs_offline = false
+    //     } else {
+    //       console.log("connection offline")
+    //       this.fs_offline = true
+    //     }
+    //   }
+    // });
 
     this.$nextTick(function () {
       evntBus.$on('send_invoice_doc_payment', (invoice_doc) => {
